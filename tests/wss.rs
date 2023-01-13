@@ -33,9 +33,8 @@ fn test_access_to_server ( /*pid: 'static &str*/ ) {
 
 	let mut rnd = rand::thread_rng ( );
 
-	let url = format ! ( "wss://stream2{:02}.forexpros.com/echo/{:03}/{:08}/websocket",
+	let url = format ! ( "wss://streaming.forexpros.com/echo/{:03}/{:08}/websocket",
 		//1 + rnd.gen::<u16> ( ) % 280,
-		rnd.gen::<u8> ( ) % 100,
 		rnd.gen::<u16> ( ) % 1000,
 		rnd.gen::<u64> ( ) % 1_0000_0000
 	);

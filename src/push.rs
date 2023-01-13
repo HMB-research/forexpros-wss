@@ -87,6 +87,9 @@ impl Stream {
 	{
 		let pair_id_str = pair_id.clone ( ).into_boxed_str ( );
 
+		let pair_msg = prepare_pair_msg(pair_id.clone());
+		// println!("using pairs str: {}", pair_msg);
+
 		// https://stackoverflow.com/questions/61752896/how-to-create-a-dedicated-threadpool-for-cpu-intensive-work-in-tokio
 		let rt_main = runtime::Runtime::new ( ).unwrap ( );
 		let rt_heartbeat = rt_main
@@ -96,6 +99,7 @@ impl Stream {
 			stream_handle_spawn: rt_main
 			.spawn ( async {
 				let url = generate_stream_url ( );
+				log::info!("URL: {}", url);
 				tokio_tungstenite::connect_async (
 					&url
 				)
@@ -111,7 +115,7 @@ impl Stream {
 				} )
 				.and_then ( |(mut tx, mut rx)| async move {
 					// TODO: react to the server
-					tx.send ( format ! ( "[\"{{\\\"_event\\\":\\\"bulk-subscribe\\\",\\\"tzID\\\":\\\"8\\\",\\\"message\\\":\\\"pid-{}:\\\"}}\"]", &pair_id ).into ( ) )
+					tx.send ( format ! ( "[\"{{\\\"_event\\\":\\\"bulk-subscribe\\\",\\\"tzID\\\":\\\"8\\\",\\\"message\\\":\\\"{}\\\"}}\"]", &pair_msg ).into ( ) )
 						.await
 						.expect ( "Expect tx.send(bulk-subscribe, tzID, pid) to server" )
 						;
@@ -132,12 +136,13 @@ impl Stream {
 							}
 						} );
 					
-					let key = format ! ( "pid-{}::{{", pair_id );
+					let key = "\"message\\\":\\\"pid-".to_string();
 					let key = key.as_str ( );
 					
 					while let Some ( msg ) = rx.next ( ).await {
 						let msg = msg.unwrap ( );
 						let msg = msg.to_text ( ).unwrap ( );
+						// println!("got msg {}", msg);
 						if msg.contains ( key ) {
 							let stop = handler (
 								Snapshot::from_str (
@@ -189,16 +194,23 @@ impl Stream {
 	}
 }
 
+
+fn prepare_pair_msg(pair_ids: String) -> String {
+	let split: Vec<String> = pair_ids.split(",").map(|s| format ! ("pid-{}:", s.to_string())).collect();
+	let joined = split.join("%%");
+    return joined;
+}
+
 /// Returns generated URL of wss stream in forexpros.com
 pub fn generate_stream_url ( ) -> String {
 	let mut rnd = rand::thread_rng ( );
 
-	format ! ( "wss://stream2{:02}.forexpros.com/echo/{:03x}/{:08x}/websocket",
-		//1 + rnd.gen::<u16> ( ) % 280,
-		rnd.gen::<u8> ( ) % 100,
-		rnd.gen::<u16> ( ) % 0xfff,
-		rnd.gen::<u32> ( )
-	)
+	format ! ( "wss://streaming.forexpros.com/echo/{:03x}/{:08x}/websocket",
+	//1 + rnd.gen::<u16> ( ) % 280,
+	rnd.gen::<u8> ( ) % 100,
+	rnd.gen::<u16> ( ) % 0xfff,
+	// rnd.gen::<u32> ( )
+)
 }
 
 /*
@@ -273,6 +285,12 @@ mod tests {
 
 		let url = generate_stream_url();
 		
-		assert_eq! ( Regex::new ( r#"wss://stream\d+.forexpros.com/echo/[0-9a-zA-Z]{3}/[0-9a-zA-Z]{8}/websocket"# ).unwrap ( ).is_match ( url.as_str ( ) ), true, "Generated: {}", url );
+		assert_eq! ( Regex::new ( r#"wss://streaming.forexpros.com/echo/[0-9a-zA-Z]{3}/[0-9a-zA-Z]{8}/websocket"# ).unwrap ( ).is_match ( url.as_str ( ) ), true, "Generated: {}", url );
+	}
+
+	#[test]
+	pub fn test_prepare_pair_msg ( ) {
+		assert_eq! ( prepare_pair_msg("1234".to_string()), "pid-1234:");
+		assert_eq! ( prepare_pair_msg("olia,haha,1234".to_string()), "pid-olia:%%pid-haha:%%pid-1234:");
 	}
 }

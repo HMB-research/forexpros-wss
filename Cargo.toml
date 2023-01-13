@@ -26,6 +26,7 @@ tungstenite = "0.11.1"
 tokio-tungstenite = { version = "0.12.0", features = [ "tls" ] }
 
 rand = '0.7.3'
+log = "0.4.17"
 
 #[dev-dependencies]
 regex = '1.4.2'
