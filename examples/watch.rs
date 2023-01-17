@@ -54,7 +54,8 @@
 use forexpros_wss::push;
 
 fn main ( ) {
-	let pair_id = "945629";	// BTC/USD
+	env_logger::init();
+	let pair_id = "945629,1";
 	//let pair_id = "8984";	// HK50 future
 	
 	let handler = |s| {
